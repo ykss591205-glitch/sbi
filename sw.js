@@ -1,5 +1,5 @@
 // オフライン用キャッシュ（ファイルを更新したら VERSION を変える）
-const VERSION = 'pf-viewer-v1';
+const VERSION = 'pf-viewer-v2';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
