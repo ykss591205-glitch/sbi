@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f5f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111110" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PFビューア">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>ポートフォリオビューア</title>
+<style>
+:root{
+  color-scheme: light;
+  --bg:#f6f5f2; --surface:#fcfcfb; --surface2:#f0efec;
+  --text:#0b0b0b; --text2:#52514e; --muted:#7d7c77; --border:#e4e2dc; --grid:#ebe9e4;
+  --accent:#2a78d6;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --pos-bar:#e34948; --neg-bar:#2a78d6; --pos-text:#c62f2f; --neg-text:#1c5cab;
+  --flat:#9a9993;
+  --shadow:0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --bg:#111110; --surface:#1a1a19; --surface2:#232321;
+    --text:#f0efec; --text2:#c3c2b7; --muted:#8f8e86; --border:#2e2e2b; --grid:#2a2a27;
+    --accent:#5598e7;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --pos-bar:#e66767; --neg-bar:#3987e5; --pos-text:#f08080; --neg-text:#7fb2f0;
+    --flat:#6f6e68; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --bg:#111110; --surface:#1a1a19; --surface2:#232321;
+  --text:#f0efec; --text2:#c3c2b7; --muted:#8f8e86; --border:#2e2e2b; --grid:#2a2a27;
+  --accent:#5598e7;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --pos-bar:#e66767; --neg-bar:#3987e5; --pos-text:#f08080; --neg-text:#7fb2f0;
+  --flat:#6f6e68; --shadow:none;
+}
+/* 米国式: 上昇=緑 / 下落=赤 */
+:root[data-pl="us"]{ --pos-bar:#1baf7a; --neg-bar:#e34948; --pos-text:#0a7a3e; --neg-text:#c62f2f; }
+@media (prefers-color-scheme: dark){ :root[data-pl="us"]:where(:not([data-theme="light"])){ --pos-bar:#199e70; --neg-bar:#e66767; --pos-text:#4fd09a; --neg-text:#f08080; } }
+:root[data-pl="us"][data-theme="dark"]{ --pos-bar:#199e70; --neg-bar:#e66767; --pos-text:#4fd09a; --neg-text:#f08080; }
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",Meiryo,sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.num{font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; letter-spacing:-.01em}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+
+header.top{
+  position:sticky; top:0; z-index:20;
+  padding:calc(env(safe-area-inset-top) + 10px) calc(env(safe-area-inset-right) + 16px) 10px calc(env(safe-area-inset-left) + 16px);
+  background:color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter:saturate(1.4) blur(12px); -webkit-backdrop-filter:saturate(1.4) blur(12px);
+  display:flex; align-items:center; gap:10px; border-bottom:1px solid transparent;
+}
+header.top.scrolled{border-bottom-color:var(--border)}
+header.top h1{font-size:17px; font-weight:700; margin:0; flex:1; letter-spacing:.02em}
+header.top h1 small{display:block; font-size:11px; font-weight:500; color:var(--muted); letter-spacing:0}
+.btn{
+  display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border);
+  background:var(--surface); border-radius:999px; padding:7px 14px; font-size:14px; font-weight:600;
+  min-height:36px; white-space:nowrap;
+}
+.btn.primary{background:var(--text); color:var(--bg); border-color:var(--text)}
+.iconbtn{width:38px; height:38px; border-radius:50%; border:1px solid var(--border); background:var(--surface); display:grid; place-items:center; padding:0}
+.iconbtn svg,.btn svg{width:18px; height:18px}
+input[type=file]{position:absolute; width:1px; height:1px; opacity:0; pointer-events:none}
+
+main{max-width:760px; margin:0 auto; padding:4px calc(env(safe-area-inset-right) + 12px) 40px calc(env(safe-area-inset-left) + 12px)}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; margin:12px 0; box-shadow:var(--shadow)}
+.card h2{font-size:14px; font-weight:700; margin:0 0 12px; color:var(--text); display:flex; align-items:center; gap:8px}
+.card h2 .sub{font-weight:500; color:var(--muted); font-size:12px; margin-left:auto}
+
+/* hero */
+.hero .label{font-size:12px; color:var(--text2); font-weight:600}
+.hero .big{font-size:clamp(30px, 9vw, 42px); font-weight:750; line-height:1.15; margin:2px 0 12px}
+.hero .big .yen{font-size:.6em; font-weight:650; margin-right:2px; color:var(--text2)}
+.stats{display:grid; grid-template-columns:1fr 1fr; gap:8px}
+.stat{background:var(--surface2); border-radius:12px; padding:10px 12px}
+.stat .k{font-size:11px; color:var(--text2); font-weight:600}
+.stat .v{font-size:17px; font-weight:700; line-height:1.3}
+.stat .p{font-size:13px; font-weight:600}
+.hero .meta{font-size:11px; color:var(--muted); margin-top:10px}
+.pos{color:var(--pos-text)} .neg{color:var(--neg-text)} .flat{color:var(--text2)}
+
+/* segmented control */
+.seg{display:inline-flex; background:var(--surface2); border-radius:10px; padding:3px; gap:2px}
+.seg button{border:0; background:transparent; padding:5px 12px; border-radius:8px; font-size:12px; font-weight:600; color:var(--text2)}
+.seg button[aria-pressed="true"]{background:var(--surface); color:var(--text); box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+/* allocation */
+.stack{display:flex; gap:2px; height:30px; border-radius:6px; overflow:hidden; margin:4px 0 14px}
+.stack > div{min-width:3px; height:100%}
+.legend{display:grid; gap:2px; grid-template-columns:minmax(0,1fr)}
+.legend .row{display:grid; grid-template-columns:12px 1fr auto 64px; gap:10px; align-items:center; padding:6px 0; border-top:1px solid var(--grid); font-size:14px}
+.legend .row:first-child{border-top:0}
+.sw{width:12px; height:12px; border-radius:3px}
+.legend .pct{font-weight:700; text-align:right}
+.legend .val{color:var(--text2); font-size:13px; text-align:right}
+
+/* bar list */
+.bars{display:grid; gap:10px; grid-template-columns:minmax(0,1fr)}
+.bar-row .line{display:flex; justify-content:space-between; gap:8px; font-size:13px; margin-bottom:4px}
+.bar-row .nm{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0}
+.bar-row .rv{white-space:nowrap; color:var(--text2)}
+.bar-row .rv b{color:var(--text); font-weight:700}
+.track{height:10px; position:relative}
+.fill{position:absolute; top:0; bottom:0; left:0; border-radius:0 4px 4px 0; background:var(--s1)}
+.fill.other{background:var(--flat)}
+
+/* diverging */
+.div-row .track{height:12px}
+.div-row .axis{position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--text2); opacity:.5}
+.div-row .fill.pos{background:var(--pos-bar); border-radius:0 4px 4px 0}
+.div-row .fill.neg{left:auto; background:var(--neg-bar); border-radius:4px 0 0 4px}
+.more{margin-top:12px; width:100%; border:1px dashed var(--border); background:transparent; border-radius:10px; padding:8px; font-size:13px; color:var(--text2); font-weight:600}
+
+/* history */
+.chart-wrap{position:relative; touch-action:pan-y}
+.chart-wrap svg{display:block; width:100%; overflow:visible}
+.chart-legend{display:flex; gap:14px; font-size:12px; color:var(--text2); margin-bottom:6px; flex-wrap:wrap}
+.chart-legend span{display:inline-flex; align-items:center; gap:6px}
+.chart-legend i{display:inline-block; width:16px; height:0; border-top:2px solid var(--s1)}
+.chart-legend i.dash{border-top:2px dashed var(--muted)}
+.empty-note{font-size:13px; color:var(--text2); background:var(--surface2); border-radius:10px; padding:12px}
+
+/* list */
+.controls{display:grid; gap:10px; margin-bottom:12px; grid-template-columns:minmax(0,1fr)}
+.searchrow{display:flex; gap:8px}
+.search{flex:1; min-width:0; border:1px solid var(--border); background:var(--surface2); border-radius:10px; padding:8px 12px; font-size:15px}
+select{border:1px solid var(--border); background:var(--surface2); border-radius:10px; padding:8px 10px; font-size:14px}
+.chips{display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--border); background:transparent; border-radius:999px; padding:5px 12px; font-size:13px; font-weight:600; white-space:nowrap; color:var(--text2); display:inline-flex; align-items:center; gap:6px}
+.chip[aria-pressed="true"]{background:var(--text); color:var(--bg); border-color:var(--text)}
+.chip .sw{width:8px; height:8px; border-radius:50%}
+.toggle{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text2); font-weight:600}
+.switch{appearance:none; -webkit-appearance:none; width:40px; height:24px; border-radius:999px; background:var(--border); position:relative; transition:background .15s; margin:0; flex:none}
+.switch::after{content:""; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%; background:#fff; transition:transform .15s; box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.switch:checked{background:var(--accent)} .switch:checked::after{transform:translateX(16px)}
+
+.items{display:grid; gap:0; grid-template-columns:minmax(0,1fr)}
+.item{border-top:1px solid var(--grid); padding:12px 2px; cursor:pointer}
+.item:first-child{border-top:0}
+.item .r1{display:flex; gap:10px; align-items:flex-start}
+.item .nm{flex:1; min-width:0}
+.item .nm b{display:block; font-size:15px; font-weight:650; line-height:1.35; overflow-wrap:anywhere}
+.item .tags{display:flex; gap:6px; flex-wrap:wrap; margin-top:3px; align-items:center}
+.tag{font-size:11px; font-weight:600; color:var(--text2); background:var(--surface2); border-radius:6px; padding:1px 7px; display:inline-flex; align-items:center; gap:5px}
+.tag .sw{width:7px; height:7px; border-radius:50%}
+.code{font-size:12px; color:var(--muted)}
+.item .rt{text-align:right; white-space:nowrap}
+.item .rt .v{font-size:16px; font-weight:700}
+.item .rt .pl{font-size:13px; font-weight:650}
+.item .rt .d{font-size:11px; color:var(--muted)}
+.detail{display:none; grid-template-columns:repeat(2,1fr); gap:6px 16px; margin-top:10px; padding:10px 12px; background:var(--surface2); border-radius:10px; font-size:13px}
+.item.open .detail{display:grid}
+.detail div{display:flex; justify-content:space-between; gap:8px}
+.detail span:first-child{color:var(--text2)}
+.listfoot{font-size:12px; color:var(--muted); margin-top:8px; text-align:right}
+
+/* empty state */
+.welcome{text-align:center; padding:28px 18px}
+.welcome .logo{width:64px; height:64px; margin:0 auto 12px; border-radius:16px; background:var(--text); display:grid; place-items:center}
+.welcome h2{display:block; font-size:20px; margin:0 0 6px}
+.welcome p{color:var(--text2); font-size:14px; margin:0 0 18px}
+.welcome .actions{display:flex; flex-direction:column; gap:10px; align-items:center}
+.welcome .btn{min-width:220px; justify-content:center; padding:11px 18px; font-size:15px}
+.howto{text-align:left; font-size:13px; color:var(--text2); background:var(--surface2); border-radius:12px; padding:12px 14px; margin-top:22px}
+.howto b{color:var(--text)}
+.howto ol{margin:6px 0 0; padding-left:20px}
+.privacy{font-size:12px; color:var(--muted); margin-top:14px; display:flex; gap:6px; justify-content:center; align-items:center}
+.err{border-color:var(--pos-bar)}
+.err pre{white-space:pre-wrap; word-break:break-all; font-size:11px; background:var(--surface2); padding:10px; border-radius:8px; max-height:180px; overflow:auto}
+
+/* tooltip */
+#tip{position:fixed; z-index:50; pointer-events:none; background:var(--text); color:var(--bg); font-size:12px; line-height:1.45; padding:8px 10px; border-radius:10px; max-width:240px; opacity:0; transform:translateY(4px); transition:opacity .12s, transform .12s; box-shadow:0 4px 16px rgba(0,0,0,.2)}
+#tip.on{opacity:1; transform:none}
+#tip b{font-weight:700}
+#tip .t{font-weight:700; margin-bottom:2px}
+
+/* dialog */
+dialog{border:0; border-radius:18px; padding:0; width:min(420px, calc(100vw - 24px)); background:var(--surface); color:var(--text); box-shadow:0 10px 40px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.dlg{padding:18px}
+.dlg h3{margin:0 0 14px; font-size:17px}
+.dlg .opt{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--grid); font-size:14px}
+.dlg .opt:first-of-type{border-top:0}
+.dlg .danger{color:#d03b3b; border-color:color-mix(in srgb, #d03b3b 40%, var(--border))}
+.dlg .foot{display:flex; justify-content:flex-end; margin-top:12px}
+.dlg .note{font-size:12px; color:var(--muted); margin-top:10px}
+
+#toast{position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom) + 20px); transform:translate(-50%, 20px); background:var(--text); color:var(--bg); padding:10px 16px; border-radius:12px; font-size:14px; opacity:0; transition:.2s; z-index:60; max-width:calc(100vw - 32px); pointer-events:none}
+#toast.on{opacity:1; transform:translate(-50%,0)}
+
+body.dragging main{outline:3px dashed var(--accent); outline-offset:-6px; border-radius:16px}
+@media (min-width:700px){ .stats{grid-template-columns:repeat(4,1fr)} }
+</style>
+</head>
+<body>
+<header class="top" id="topbar">
+  <h1>ポートフォリオ<small id="asof">SBI証券 CSVビューア</small></h1>
+  <label class="btn primary" for="file" id="importBtn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+    CSV読込
+  </label>
+  <input type="file" id="file" accept=".csv,text/csv,text/comma-separated-values,application/vnd.ms-excel" multiple>
+  <button class="iconbtn" id="settingsBtn" aria-label="設定">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>
+  </button>
+</header>
+
+<main id="app"></main>
+
+<div id="tip" role="status" aria-live="polite"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<dialog id="settings">
+  <form method="dialog" class="dlg">
+    <h3>設定</h3>
+    <div class="opt"><span>損益の色</span>
+      <div class="seg" data-pref="pl">
+        <button type="button" value="jp">日本式 <span class="pos">▲</span><span class="neg">▼</span></button>
+        <button type="button" value="us">米国式</button>
+      </div>
+    </div>
+    <div class="opt"><span>テーマ</span>
+      <div class="seg" data-pref="theme">
+        <button type="button" value="auto">自動</button>
+        <button type="button" value="light">ライト</button>
+        <button type="button" value="dark">ダーク</button>
+      </div>
+    </div>
+    <div class="opt"><span>推移の記録<br><small style="color:var(--muted)" id="histCount"></small></span>
+      <button type="button" class="btn danger" id="clearHist">履歴を消去</button>
+    </div>
+    <div class="opt"><span>すべてのデータ</span>
+      <button type="button" class="btn danger" id="clearAll">全データを消去</button>
+    </div>
+    <p class="note">読み込んだデータはこの端末のブラウザ内にだけ保存され、外部には送信されません。</p>
+    <div class="foot"><button class="btn" value="close">閉じる</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const app = $('#app');
+const LS_DATA = 'sbi-pf-viewer:data:v1', LS_HIST = 'sbi-pf-viewer:history:v1', LS_PREF = 'sbi-pf-viewer:prefs:v1';
+
+/* ---------- storage (fails soft) ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+/* ---------- formatting ---------- */
+const nf0 = new Intl.NumberFormat('ja-JP', {maximumFractionDigits:0});
+const nf2 = new Intl.NumberFormat('ja-JP', {maximumFractionDigits:2});
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const yen = v => v == null ? '—' : (v < 0 ? '-' : '') + '¥' + nf0.format(Math.abs(Math.round(v)));
+const syen = v => v == null ? '—' : (v > 0 ? '+' : v < 0 ? '-' : '±') + '¥' + nf0.format(Math.abs(Math.round(v)));
+const spct = v => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '-' : '±') + Math.abs(v).toFixed(2) + '%';
+const pct1 = v => (v * 100).toFixed(v * 100 >= 10 ? 1 : 1) + '%';
+const man = v => { const a = Math.abs(v); if (a >= 1e8) return (v / 1e8).toFixed(a >= 1e9 ? 1 : 2).replace(/\.?0+$/, '') + '億'; if (a >= 1e4) return nf0.format(Math.round(v / 1e4)) + '万'; return nf0.format(Math.round(v)); };
+const sgn = v => v > 0 ? 'pos' : v < 0 ? 'neg' : 'flat';
+const fmtDate = t => { const d = new Date(t); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`; };
+const fmtDateTime = t => { const d = new Date(t); return fmtDate(t) + ` ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; };
+const dayKey = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+/* ---------- CSV decoding & parsing ---------- */
+function decode(buf){
+  const u8 = new Uint8Array(buf);
+  try { return new TextDecoder('utf-8', {fatal:true}).decode(u8).replace(/^﻿/, ''); }
+  catch(e){
+    try { return new TextDecoder('shift_jis').decode(u8); }
+    catch(e2){ return new TextDecoder('utf-8').decode(u8); }
+  }
+}
+function parseCSV(text){
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"'){ if (text[i+1] === '"'){ f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r'){
+      if (c === '\r' && text[i+1] === '\n') i++;
+      row.push(f); rows.push(row); row = []; f = '';
+    } else f += c;
+  }
+  if (f !== '' || row.length){ row.push(f); rows.push(row); }
+  return rows.map(r => r.map(s => s.normalize('NFKC').trim()));
+}
+function num(s){
+  if (s == null) return null;
+  let t = String(s).replace(/[,円%$\s]/g, '').replace(/^[▲△]/, '-').replace(/[−–—]/g, '-');
+  if (!t || /^-+$/.test(t) || /^[-\/]+$/.test(t)) return null;
+  if (t[0] === '+') t = t.slice(1);
+  const v = Number(t);
+  return isFinite(v) ? v : null;
+}
+
+/* header → column index map */
+const MATCH = {
+  name:   h => /銘柄|ファンド名|名称|銘柄名/.test(h) && !/コード$/.test(h),
+  code:   h => /^(銘柄)?コード$|ティッカー|シンボル/.test(h),
+  qty:    h => /数量|株数|口数/.test(h),
+  cost:   h => /取得単価|平均取得|取得価格|平均単価/.test(h),
+  price:  h => /現在値|基準価額|現在価格|時価|現在単価/.test(h) && !/評価|比/.test(h),
+  dayPct: h => /前日比/.test(h) && /%|率/.test(h),
+  day:    h => /前日比/.test(h) && !/%|率/.test(h),
+  plPct:  h => /損益/.test(h) && /%|率/.test(h),
+  pl:     h => /損益/.test(h) && !/%|率/.test(h),
+  value:  h => /評価額|時価評価/.test(h),
+  costTotal: h => /取得金額|取得総額|取得額|買付金額/.test(h) && !/単価/.test(h)
+};
+function mapHeader(r){
+  const m = {};
+  for (const k in MATCH){
+    const idx = [];
+    r.forEach((h, i) => { if (h && MATCH[k](h)) idx.push(i); });
+    if (idx.length) m[k] = (idx.find(i => /円/.test(r[i])) ?? idx[0]);
+  }
+  return m;
+}
+function isHeader(r){
+  if (r.filter(Boolean).length < 4) return null;
+  if (r.some(c => num(c) != null && c !== '')) return null;
+  const m = mapHeader(r);
+  return (m.name != null && (m.value != null || m.pl != null)) ? m : null;
+}
+function classify(title, header){
+  const t = title || '';
+  const isFund = /投資信託|投信|ファンド/.test(t) || header.some(h => /ファンド名|基準価額/.test(h));
+  let asset = isFund ? '投資信託'
+    : /外国|米国|海外|中国|韓国|ロシア|ベトナム|インドネシア|シンガポール|タイ|マレーシア/.test(t) || header.some(h => /ティッカー|外貨|USD|米ドル/.test(h)) ? '外国株式'
+    : /債券/.test(t) ? '債券'
+    : /株式|現物|信用|ETF|REIT/.test(t) ? '国内株式'
+    : '';
+  let account = /つみたて投資枠/.test(t) ? 'NISA つみたて'
+    : /成長投資枠/.test(t) ? 'NISA 成長'
+    : /つみたてNISA/.test(t) ? '旧つみたてNISA'
+    : /ジュニア/.test(t) ? 'ジュニアNISA'
+    : /NISA/.test(t) ? '旧NISA'
+    : /信用/.test(t) ? '信用'
+    : /特定/.test(t) ? '特定'
+    : /一般/.test(t) ? '一般'
+    : '';
+  return {asset, account, isFund};
+}
+function buildHolding(d, m, cls, title){
+  let name = d[m.name] || '';
+  let code = m.code != null ? (d[m.code] || '') : '';
+  if (!name) return null;
+  if (!code && !cls.isFund){
+    const mm = name.match(/^([0-9][0-9A-Z]{3}|[A-Z][A-Z.\-]{0,5})[\s]+(.+)$/);
+    if (mm){ code = mm[1]; name = mm[2]; }
+  }
+  const g = k => m[k] != null ? num(d[m[k]]) : null;
+  const qty = g('qty'), cost = g('cost'), price = g('price');
+  let value = g('value'), pl = g('pl'), plPct = g('plPct'), day = g('day'), dayPct = g('dayPct');
+  let costTotal = g('costTotal');
+  const unit = cls.isFund ? 10000 : 1;
+  if (value == null && qty != null && price != null) value = qty * price / unit;
+  if (value == null) return null;
+  if (costTotal == null){
+    if (pl != null) costTotal = value - pl;
+    else if (qty != null && cost != null) costTotal = qty * cost / unit;
+  }
+  if (pl == null && costTotal != null) pl = value - costTotal;
+  if (plPct == null && pl != null && costTotal) plPct = pl / costTotal * 100;
+  let dayYen = null;
+  if (dayPct != null && dayPct > -100) dayYen = value * dayPct / (100 + dayPct);
+  else if (day != null && qty != null) dayYen = qty * day / unit;
+  let asset = cls.asset;
+  if (!asset) asset = /^\d{3}[0-9A-Z]$/.test(code) ? '国内株式' : /^[A-Z]/.test(code) ? '外国株式' : 'その他';
+  return {
+    name, code, asset, account: cls.account || 'その他', section: title || '',
+    qty, cost, price, value, pl, plPct, costTotal, day, dayPct, dayYen, isFund: cls.isFund
+  };
+}
+function extract(rows){
+  const out = []; let title = ''; let i = 0;
+  while (i < rows.length){
+    const r = rows[i];
+    const ne = r.filter(Boolean);
+    const m = isHeader(r);
+    if (m){
+      const cls = classify(title, r);
+      i++;
+      while (i < rows.length){
+        const d = rows[i];
+        const dn = d.filter(Boolean);
+        if (dn.length <= 1) break;
+        if (/合計|総計|小計/.test(d[0] || '')) break;
+        if (isHeader(d)) break;
+        const h = buildHolding(d, m, cls, title);
+        if (h) out.push(h);
+        i++;
+      }
+      continue;
+    }
+    if (ne.length === 1 && num(ne[0]) == null && !/^(データ|PF名)/.test(ne[0])) title = ne[0];
+    i++;
+  }
+  return out;
+}
+
+/* ---------- state ---------- */
+let data = store.get(LS_DATA, null);
+let hist = store.get(LS_HIST, []);
+let prefs = Object.assign({pl:'jp', theme:'auto'}, store.get(LS_PREF, {}));
+const ui = { alloc:'asset', sort:'value', filter:'all', merge:false, q:'', showAllPL:false, open:new Set(), lastError:null };
+
+function applyPrefs(){
+  const root = document.documentElement;
+  if (prefs.theme === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', prefs.theme);
+  root.setAttribute('data-pl', prefs.pl);
+  document.querySelectorAll('#settings .seg').forEach(seg => {
+    const k = seg.dataset.pref;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.value === prefs[k])));
+  });
+}
+
+async function loadFiles(files){
+  const all = []; const bad = []; let latest = 0;
+  for (const f of files){
+    try{
+      const text = decode(await f.arrayBuffer());
+      const hs = extract(parseCSV(text));
+      if (hs.length){ all.push(...hs); latest = Math.max(latest, f.lastModified || 0); }
+      else bad.push({name:f.name, head:text.split(/\r?\n/).slice(0, 12).join('\n')});
+    }catch(e){ bad.push({name:f.name, head:String(e)}); }
+  }
+  if (!all.length){
+    ui.lastError = bad;
+    render();
+    toast('保有銘柄を読み取れませんでした');
+    return;
+  }
+  ui.lastError = bad.length ? bad : null;
+  data = { holdings: all, files: [...files].map(f => f.name), importedAt: Date.now(), asOf: latest || Date.now() };
+  store.set(LS_DATA, data);
+  addSnapshot();
+  ui.filter = 'all'; ui.open.clear(); ui.showAllPL = false;
+  render();
+  window.scrollTo({top:0, behavior:'smooth'});
+  toast(`${all.length}件の保有を読み込みました`);
+}
+function totals(hs){
+  const value = hs.reduce((s, h) => s + h.value, 0);
+  const hasPL = hs.some(h => h.pl != null);
+  const pl = hs.reduce((s, h) => s + (h.pl ?? 0), 0);
+  const cost = value - pl;
+  const hasDay = hs.some(h => h.dayYen != null);
+  const day = hs.reduce((s, h) => s + (h.dayYen ?? 0), 0);
+  return { value, pl: hasPL ? pl : null, plPct: hasPL && cost ? pl / cost * 100 : null, cost: hasPL ? cost : null,
+           day: hasDay ? day : null, dayPct: hasDay && value - day ? day / (value - day) * 100 : null };
+}
+function addSnapshot(){
+  const t = totals(data.holdings);
+  const k = dayKey(data.asOf);
+  hist = hist.filter(s => s.d !== k);
+  hist.push({d:k, t:data.asOf, v:t.value, c:t.cost});
+  hist.sort((a, b) => a.d < b.d ? -1 : 1);
+  if (hist.length > 1000) hist = hist.slice(-1000);
+  store.set(LS_HIST, hist);
+}
+function merged(hs){
+  const map = new Map();
+  for (const h of hs){
+    const k = (h.code || '') + '|' + h.name.replace(/\s+/g, '');
+    const e = map.get(k);
+    if (!e){ map.set(k, {...h, accounts:[h.account], parts:1}); continue; }
+    e.value += h.value;
+    if (h.pl != null) e.pl = (e.pl ?? 0) + h.pl;
+    if (h.qty != null) e.qty = (e.qty ?? 0) + h.qty;
+    if (h.dayYen != null) e.dayYen = (e.dayYen ?? 0) + h.dayYen;
+    if (!e.accounts.includes(h.account)) e.accounts.push(h.account);
+    e.parts++;
+  }
+  for (const e of map.values()){
+    if (e.parts > 1){
+      e.costTotal = e.pl != null ? e.value - e.pl : null;
+      e.plPct = e.pl != null && e.costTotal ? e.pl / e.costTotal * 100 : null;
+      e.cost = e.qty && e.costTotal != null ? e.costTotal / e.qty * (e.isFund ? 10000 : 1) : null;
+      e.account = e.accounts.join(' / ');
+    }
+  }
+  return [...map.values()];
+}
+
+/* ---------- colors (fixed per category, never by rank) ---------- */
+const ASSET_ORDER = ['国内株式', '投資信託', '外国株式', '債券', 'その他'];
+const ACCT_ORDER  = ['特定', 'NISA 成長', 'NISA つみたて', '一般', '旧NISA', '旧つみたてNISA', 'ジュニアNISA', '信用', 'その他'];
+const ASSET_COLOR = {'国内株式':'var(--s1)', '投資信託':'var(--s2)', '外国株式':'var(--s3)', '債券':'var(--s7)', 'その他':'var(--flat)'};
+const ACCT_COLOR  = {'特定':'var(--s1)', 'NISA 成長':'var(--s2)', 'NISA つみたて':'var(--s3)', '一般':'var(--s7)', '旧NISA':'var(--s5)', '旧つみたてNISA':'var(--s6)', 'ジュニアNISA':'var(--s4)', '信用':'var(--s8)', 'その他':'var(--flat)'};
+const colorOf = (dim, k) => (dim === 'asset' ? ASSET_COLOR : ACCT_COLOR)[k] || 'var(--flat)';
+
+/* ---------- render ---------- */
+function render(){
+  const asof = $('#asof');
+  if (!data || !data.holdings?.length){
+    asof.textContent = 'SBI証券 CSVビューア';
+    app.innerHTML = errorCard() + welcome();
+    bindWelcome();
+    return;
+  }
+  asof.textContent = `${fmtDate(data.asOf)} 時点のCSV`;
+  app.innerHTML = errorCard() + hero() + allocation() + topHoldings() + plChart() + history() + list();
+  bindDashboard();
+  drawHistory();
+}
+
+function errorCard(){
+  if (!ui.lastError?.length) return '';
+  return `<section class="card err"><h2>読み取れなかったファイル</h2>
+    <p style="font-size:13px;color:var(--text2);margin:0 0 8px">保有銘柄の見出し行（「銘柄」「評価額」などを含む行）が見つかりませんでした。ポートフォリオ画面のCSVか確認してください。形式が違う場合は、下の先頭部分（個人情報は伏せて）を共有いただければ対応できます。</p>
+    ${ui.lastError.map(e => `<div style="font-size:12px;font-weight:700;margin-top:8px">${esc(e.name)}</div><pre>${esc(e.head)}</pre>`).join('')}
+    <button class="more" id="dismissErr">閉じる</button></section>`;
+}
+
+function welcome(){
+  return `<section class="card welcome">
+    <div class="logo"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round"><path d="M5 19V13M10 19V8M15 19v-6M20 19V5"/></svg></div>
+    <h2>ポートフォリオを見やすく</h2>
+    <p>SBI証券からダウンロードしたCSVを読み込むと、<br>資産配分・損益・銘柄一覧をまとめて表示します。</p>
+    <div class="actions">
+      <label class="btn primary" for="file">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        CSVファイルを選ぶ</label>
+      <button class="btn" id="sampleBtn">サンプルデータで試す</button>
+    </div>
+    <div class="howto"><b>CSVの入手方法</b>
+      <ol>
+        <li>SBI証券にログインし「口座管理」→「ポートフォリオ」を開く</li>
+        <li>画面内の「CSVダウンロード」をタップ（スマホはPCサイト表示に切替）</li>
+        <li>保存したファイルをこのアプリの「CSV読込」から選ぶ</li>
+      </ol>
+      <div style="margin-top:6px">米国株など別画面のCSVも、複数まとめて選択すると合算して表示します。</div>
+    </div>
+    <div class="privacy"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>データは端末内で処理され、外部に送信されません</div>
+  </section>`;
+}
+
+function hero(){
+  const t = totals(data.holdings);
+  const stat = (k, v, p, s) => `<div class="stat"><div class="k">${k}</div><div class="v num ${s}">${v}</div>${p != null ? `<div class="p num ${s}">${p}</div>` : ''}</div>`;
+  return `<section class="card hero">
+    <div class="label">評価額合計</div>
+    <div class="big num"><span class="yen">¥</span>${nf0.format(Math.round(t.value))}</div>
+    <div class="stats">
+      ${stat('評価損益', syen(t.pl), spct(t.plPct), sgn(t.pl))}
+      ${stat('前日比', syen(t.day), spct(t.dayPct), sgn(t.day))}
+      ${stat('取得額', yen(t.cost), null, '')}
+      ${stat('保有銘柄数', merged(data.holdings).length + '<span style="font-size:12px;font-weight:600;color:var(--text2)"> 銘柄</span>', null, '')}
+    </div>
+    <div class="meta">${esc(data.files.join('、'))} ・ 読込 ${fmtDateTime(data.importedAt)}</div>
+  </section>`;
+}
+
+function groupBy(hs, key){
+  const m = new Map();
+  for (const h of hs){ const k = h[key]; m.set(k, (m.get(k) || 0) + h.value); }
+  const order = key === 'asset' ? ASSET_ORDER : ACCT_ORDER;
+  return [...m.entries()].map(([k, v]) => ({k, v}))
+    .sort((a, b) => (order.indexOf(a.k) + 1 || 99) - (order.indexOf(b.k) + 1 || 99));
+}
+function allocation(){
+  const dim = ui.alloc;
+  const groups = groupBy(data.holdings, dim);
+  const total = groups.reduce((s, g) => s + g.v, 0);
+  const segs = groups.map(g => `<div style="flex:${g.v / total} 1 0;background:${colorOf(dim, g.k)}" data-tip="<div class='t'>${esc(g.k)}</div>${yen(g.v)} ・ ${pct1(g.v / total)}"></div>`).join('');
+  const rows = groups.map(g => {
+    const hs = data.holdings.filter(h => h[dim] === g.k);
+    const t = totals(hs);
+    return `<div class="row"><span class="sw" style="background:${colorOf(dim, g.k)}"></span>
+      <span>${esc(g.k)}<span class="num ${sgn(t.pl)}" style="font-size:12px;margin-left:8px">${spct(t.plPct)}</span></span>
+      <span class="val num">${man(g.v)}円</span><span class="pct num">${pct1(g.v / total)}</span></div>`;
+  }).join('');
+  return `<section class="card"><h2>資産配分
+      <span class="sub" style="margin-left:auto"><span class="seg" id="allocSeg">
+        <button type="button" value="asset" aria-pressed="${dim === 'asset'}">資産クラス</button>
+        <button type="button" value="account" aria-pressed="${dim === 'account'}">口座区分</button>
+      </span></span></h2>
+    <div class="stack" role="img" aria-label="資産配分">${segs}</div>
+    <div class="legend">${rows}</div></section>`;
+}
+
+function topHoldings(){
+  const ms = merged(data.holdings).sort((a, b) => b.value - a.value);
+  const total = ms.reduce((s, h) => s + h.value, 0);
+  const N = 8;
+  const top = ms.slice(0, N);
+  const rest = ms.slice(N);
+  const items = top.map(h => ({label:h.name, v:h.value, other:false}));
+  if (rest.length) items.push({label:`その他 ${rest.length}銘柄`, v:rest.reduce((s, h) => s + h.value, 0), other:true});
+  const max = Math.max(...items.map(i => i.v));
+  return `<section class="card"><h2>保有銘柄の構成<span class="sub">評価額の大きい順</span></h2>
+    <div class="bars">${items.map(i => `
+      <div class="bar-row" data-tip="<div class='t'>${esc(i.label)}</div>${yen(i.v)} ・ 構成比 ${pct1(i.v / total)}">
+        <div class="line"><span class="nm">${esc(i.label)}</span><span class="rv num"><b>${pct1(i.v / total)}</b>　${man(i.v)}円</span></div>
+        <div class="track"><div class="fill${i.other ? ' other' : ''}" style="width:${Math.max(.6, i.v / max * 100)}%"></div></div>
+      </div>`).join('')}</div></section>`;
+}
+
+function plChart(){
+  const ms = merged(data.holdings).filter(h => h.pl != null).sort((a, b) => b.pl - a.pl);
+  if (!ms.length) return '';
+  const posMax = Math.max(0, ...ms.map(h => h.pl)), negMax = Math.max(0, ...ms.map(h => -h.pl));
+  const span = (posMax + negMax) || 1;
+  const zero = negMax / span * 100;
+  const LIMIT = 12;
+  let shown = ms;
+  if (!ui.showAllPL && ms.length > LIMIT){
+    const half = LIMIT / 2;
+    shown = ms.slice(0, half).concat(ms.slice(-half));
+  }
+  const row = h => {
+    const w = Math.abs(h.pl) / span * 100;
+    return `<div class="bar-row div-row" data-tip="<div class='t'>${esc(h.name)}</div>評価損益 <b>${syen(h.pl)}</b>（${spct(h.plPct)}）<br>評価額 ${yen(h.value)}">
+      <div class="line"><span class="nm">${esc(h.name)}</span><span class="rv num"><b class="${sgn(h.pl)}">${syen(h.pl)}</b> <span class="${sgn(h.pl)}">${spct(h.plPct)}</span></span></div>
+      <div class="track"><div class="axis" style="left:${zero}%"></div><div class="fill ${h.pl >= 0 ? 'pos' : 'neg'}" style="width:${Math.max(.4, w)}%;${h.pl >= 0 ? 'left:' + zero : 'right:' + (100 - zero)}%"></div></div>
+    </div>`;
+  };
+  let body;
+  if (shown !== ms){
+    const half = LIMIT / 2;
+    body = shown.slice(0, half).map(row).join('') +
+      `<div style="text-align:center;font-size:12px;color:var(--muted)">… 他 ${ms.length - LIMIT} 銘柄 …</div>` +
+      shown.slice(half).map(row).join('');
+  } else body = shown.map(row).join('');
+  return `<section class="card"><h2>銘柄別の評価損益<span class="sub">利益の大きい順</span></h2>
+    <div class="bars">${body}</div>
+    ${ms.length > LIMIT ? `<button class="more" id="plMore">${ui.showAllPL ? '上位・下位のみ表示' : `すべて表示（${ms.length}銘柄）`}</button>` : ''}
+  </section>`;
+}
+
+function history(){
+  const inner = hist.length >= 2
+    ? `<div class="chart-legend"><span><i></i>評価額</span><span><i class="dash"></i>取得額</span></div><div class="chart-wrap" id="histChart"></div>`
+    : `<div class="empty-note">別の日にCSVを読み込むたびに、その日の評価額が記録されてここに推移グラフが表示されます。（現在 ${hist.length} 日分）</div>`;
+  return `<section class="card"><h2>評価額の推移<span class="sub">${hist.length}日分の記録</span></h2>${inner}</section>`;
+}
+
+function list(){
+  let hs = ui.merge ? merged(data.holdings) : data.holdings.slice();
+  const assets = ASSET_ORDER.filter(a => data.holdings.some(h => h.asset === a));
+  if (ui.filter !== 'all') hs = hs.filter(h => h.asset === ui.filter);
+  if (ui.q){ const q = ui.q.normalize('NFKC').toLowerCase(); hs = hs.filter(h => (h.name + ' ' + h.code).normalize('NFKC').toLowerCase().includes(q)); }
+  const S = {
+    value: (a, b) => b.value - a.value,
+    pl: (a, b) => (b.pl ?? -Infinity) - (a.pl ?? -Infinity),
+    plPct: (a, b) => (b.plPct ?? -Infinity) - (a.plPct ?? -Infinity),
+    plAsc: (a, b) => (a.pl ?? Infinity) - (b.pl ?? Infinity),
+    day: (a, b) => (b.dayPct ?? -Infinity) - (a.dayPct ?? -Infinity),
+    name: (a, b) => a.name.localeCompare(b.name, 'ja')
+  };
+  hs.sort(S[ui.sort]);
+  const grand = data.holdings.reduce((s, h) => s + h.value, 0);
+  const ft = totals(hs);
+  const item = (h, i) => {
+    const id = (ui.merge ? 'm' : 'r') + '|' + h.code + '|' + h.name + '|' + h.account;
+    const unit = h.isFund ? '口' : (h.asset === '外国株式' ? '' : '株');
+    const d = (k, v) => `<div><span>${k}</span><span class="num">${v}</span></div>`;
+    return `<div class="item${ui.open.has(id) ? ' open' : ''}" data-id="${esc(id)}">
+      <div class="r1">
+        <div class="nm"><b>${esc(h.name)}</b>
+          <div class="tags">${h.code ? `<span class="code num">${esc(h.code)}</span>` : ''}
+            <span class="tag"><span class="sw" style="background:${colorOf('asset', h.asset)}"></span>${esc(h.asset)}</span>
+            ${(ui.merge ? h.accounts : [h.account]).map(a => `<span class="tag">${esc(a)}</span>`).join('')}
+          </div></div>
+        <div class="rt"><div class="v num">${yen(h.value)}</div>
+          <div class="pl num ${sgn(h.pl)}">${syen(h.pl)}　${spct(h.plPct)}</div>
+          <div class="d num">前日比 <span class="${sgn(h.dayPct)}">${spct(h.dayPct)}</span></div></div>
+      </div>
+      <div class="detail">
+        ${d('数量', h.qty != null ? nf2.format(h.qty) + unit : '—')}
+        ${d('構成比', pct1(h.value / grand))}
+        ${d(h.isFund ? '取得単価※' : '取得単価', h.cost != null ? nf2.format(h.cost) : '—')}
+        ${d(h.isFund ? '基準価額' : '現在値', h.price != null ? nf2.format(h.price) : '—')}
+        ${d('取得額', yen(h.costTotal))}
+        ${d('前日比(円)', `<span class="${sgn(h.dayYen)}">${syen(h.dayYen)}</span>`)}
+        ${h.isFund ? '<div style="grid-column:1/-1;font-size:11px;color:var(--muted)">※ 投資信託の単価は1万口あたり</div>' : ''}
+      </div></div>`;
+  };
+  return `<section class="card" id="listCard"><h2>保有一覧<span class="sub">${hs.length}件</span></h2>
+    <div class="controls">
+      <div class="searchrow">
+        <input class="search" id="q" type="search" placeholder="銘柄名・コードで検索" value="${esc(ui.q)}" autocomplete="off">
+        <select id="sort" aria-label="並び替え">
+          ${[['value','評価額順'],['pl','損益額順'],['plPct','損益率順'],['plAsc','損失の大きい順'],['day','前日比順'],['name','名前順']]
+            .map(([v, l]) => `<option value="${v}"${ui.sort === v ? ' selected' : ''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      <div class="chips" id="chips">
+        <button class="chip" value="all" aria-pressed="${ui.filter === 'all'}">すべて</button>
+        ${assets.map(a => `<button class="chip" value="${esc(a)}" aria-pressed="${ui.filter === a}"><span class="sw" style="background:${colorOf('asset', a)}"></span>${esc(a)}</button>`).join('')}
+      </div>
+      <label class="toggle"><input type="checkbox" class="switch" id="merge" ${ui.merge ? 'checked' : ''}>同じ銘柄を口座をまたいで合算</label>
+    </div>
+    <div class="items">${hs.map(item).join('') || '<div class="empty-note">該当する銘柄がありません</div>'}</div>
+    <div class="listfoot num">表示中の合計 ${yen(ft.value)} ・ 損益 <span class="${sgn(ft.pl)}">${syen(ft.pl)}</span></div>
+  </section>`;
+}
+
+/* ---------- history line chart (SVG) ---------- */
+function drawHistory(){
+  const wrap = $('#histChart');
+  if (!wrap) return;
+  const W = Math.max(280, wrap.clientWidth), H = 190;
+  const P = {l:46, r:10, t:10, b:24};
+  const pts = hist.map(s => ({t:new Date(s.d + 'T00:00:00').getTime(), v:s.v, c:s.c, d:s.d}));
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t;
+  const vals = pts.flatMap(p => [p.v, p.c]).filter(v => v != null);
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  const pad = (hi - lo) * .12 || hi * .05 || 1; lo -= pad; hi += pad;
+  const step = niceStep((hi - lo) / 4);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = t => P.l + (t1 === t0 ? (W - P.l - P.r) / 2 : (t - t0) / (t1 - t0) * (W - P.l - P.r));
+  const y = v => P.t + (1 - (v - lo) / (hi - lo)) * (H - P.t - P.b);
+  let grid = '';
+  for (let v = lo; v <= hi + step / 2; v += step){
+    grid += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)" stroke-width="1"/>
+      <text x="${P.l - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" fill="var(--muted)" class="num">${man(v)}</text>`;
+  }
+  const xt = [pts[0], pts[pts.length - 1]];
+  if (pts.length > 4) xt.splice(1, 0, pts[Math.floor(pts.length / 2)]);
+  const xlabels = xt.map((p, i) => `<text x="${x(p.t)}" y="${H - 6}" font-size="10" fill="var(--muted)" text-anchor="${i === 0 ? 'start' : i === xt.length - 1 ? 'end' : 'middle'}">${p.d.slice(2).replace(/-/g, '/')}</text>`).join('');
+  const path = k => pts.filter(p => p[k] != null).map((p, i) => (i ? 'L' : 'M') + x(p.t).toFixed(1) + ',' + y(p[k]).toFixed(1)).join('');
+  const last = pts[pts.length - 1];
+  wrap.innerHTML = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="評価額の推移">
+    ${grid}${xlabels}
+    <path d="${path('c')}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <path d="${path('v')}" fill="none" stroke="var(--s1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.length <= 40 ? pts.map(p => `<circle cx="${x(p.t)}" cy="${y(p.v)}" r="2.5" fill="var(--s1)"/>`).join('') : ''}
+    <circle cx="${x(last.t)}" cy="${y(last.v)}" r="4" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+    <g id="xh" style="display:none">
+      <line id="xhl" y1="${P.t}" y2="${H - P.b}" stroke="var(--text2)" stroke-width="1" opacity=".5"/>
+      <circle id="xhc" r="4.5" fill="var(--s1)" stroke="var(--surface)" stroke-width="2"/>
+      <circle id="xhd" r="3.5" fill="var(--muted)" stroke="var(--surface)" stroke-width="2"/>
+    </g>
+    <rect x="${P.l}" y="0" width="${W - P.l - P.r}" height="${H}" fill="transparent" id="xhHit"/>
+  </svg>`;
+  const svg = wrap.querySelector('svg');
+  const hit = wrap.querySelector('#xhHit'), g = wrap.querySelector('#xh');
+  const move = e => {
+    const r = svg.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (W / r.width);
+    let best = pts[0];
+    for (const p of pts) if (Math.abs(x(p.t) - mx) < Math.abs(x(best.t) - mx)) best = p;
+    g.style.display = '';
+    g.querySelector('#xhl').setAttribute('x1', x(best.t)); g.querySelector('#xhl').setAttribute('x2', x(best.t));
+    const c = g.querySelector('#xhc'); c.setAttribute('cx', x(best.t)); c.setAttribute('cy', y(best.v));
+    const dd = g.querySelector('#xhd');
+    if (best.c != null){ dd.style.display = ''; dd.setAttribute('cx', x(best.t)); dd.setAttribute('cy', y(best.c)); } else dd.style.display = 'none';
+    const pl = best.c != null ? best.v - best.c : null;
+    showTip(`<div class="t">${best.d.replace(/-/g, '/')}</div>評価額 <b>${yen(best.v)}</b><br>取得額 ${yen(best.c)}<br>損益 <b>${syen(pl)}</b>`,
+      r.left + x(best.t) * (r.width / W), r.top + y(best.v) * (r.height / H));
+  };
+  hit.addEventListener('pointermove', move);
+  hit.addEventListener('pointerdown', move);
+  hit.addEventListener('pointerleave', () => { g.style.display = 'none'; hideTip(); });
+}
+function niceStep(raw){
+  const p = Math.pow(10, Math.floor(Math.log10(raw || 1)));
+  const n = raw / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * p;
+}
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+let tipOwner = null;
+function showTip(html, cx, cy){
+  tip.innerHTML = html; tip.classList.add('on');
+  const r = tip.getBoundingClientRect();
+  let left = cx - r.width / 2, top = cy - r.height - 12;
+  if (top < 8 + (document.getElementById('topbar').offsetHeight)) top = cy + 16;
+  left = Math.max(8, Math.min(window.innerWidth - r.width - 8, left));
+  tip.style.left = left + 'px'; tip.style.top = top + 'px';
+}
+function hideTip(){ tip.classList.remove('on'); tipOwner = null; }
+document.addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse') return;
+  const el = e.target.closest('[data-tip]');
+  if (el){ tipOwner = el; const r = el.getBoundingClientRect(); showTip(el.dataset.tip, Math.min(e.clientX, r.right), r.top); }
+  else if (tipOwner && !e.target.closest('#histChart')) hideTip();
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-tip]');
+  if (el && !(e.pointerType === 'mouse')){
+    if (tipOwner === el){ hideTip(); return; }
+    tipOwner = el; const r = el.getBoundingClientRect();
+    showTip(el.dataset.tip, e.clientX || (r.left + r.width / 2), r.top);
+  } else if (!el && !e.target.closest('#histChart')) hideTip();
+});
+window.addEventListener('scroll', () => { hideTip(); $('#topbar').classList.toggle('scrolled', window.scrollY > 4); }, {passive:true});
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 2400); }
+
+/* ---------- bindings ---------- */
+function bindCommon(){
+  const d = $('#dismissErr'); if (d) d.onclick = () => { ui.lastError = null; render(); };
+}
+function bindWelcome(){
+  bindCommon();
+  $('#sampleBtn').onclick = () => {
+    const f = new File([SAMPLE_CSV], 'サンプル_ポートフォリオ.csv', {type:'text/csv', lastModified:Date.now()});
+    loadFiles([f]);
+  };
+}
+function bindDashboard(){
+  bindCommon();
+  $('#allocSeg').onclick = e => { const b = e.target.closest('button'); if (!b) return; ui.alloc = b.value; rerenderKeepScroll(); };
+  const more = $('#plMore'); if (more) more.onclick = () => { ui.showAllPL = !ui.showAllPL; rerenderKeepScroll(); };
+  $('#sort').onchange = e => { ui.sort = e.target.value; rerenderList(); };
+  $('#chips').onclick = e => { const b = e.target.closest('button'); if (!b) return; ui.filter = b.value; rerenderList(); };
+  $('#merge').onchange = e => { ui.merge = e.target.checked; ui.open.clear(); rerenderList(); };
+  const q = $('#q');
+  q.oninput = () => { ui.q = q.value; const pos = q.selectionStart; rerenderList(); const nq = $('#q'); nq.focus(); try{ nq.setSelectionRange(pos, pos); }catch(e){} };
+  bindItems();
+}
+function bindItems(){
+  document.querySelectorAll('.item').forEach(it => it.onclick = () => {
+    const id = it.dataset.id;
+    if (ui.open.has(id)) ui.open.delete(id); else ui.open.add(id);
+    it.classList.toggle('open');
+  });
+}
+function rerenderKeepScroll(){ const y = window.scrollY; render(); window.scrollTo(0, y); }
+function rerenderList(){
+  const card = $('#listCard');
+  const tmp = document.createElement('div'); tmp.innerHTML = list();
+  card.replaceWith(tmp.firstElementChild);
+  bindDashboard();
+}
+
+$('#file').addEventListener('change', e => { const fs = [...e.target.files]; e.target.value = ''; if (fs.length) loadFiles(fs); });
+let dragDepth = 0;
+document.addEventListener('dragenter', e => { if (e.dataTransfer?.types?.includes('Files')){ dragDepth++; document.body.classList.add('dragging'); } });
+document.addEventListener('dragleave', () => { if (--dragDepth <= 0){ dragDepth = 0; document.body.classList.remove('dragging'); } });
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging'); const fs = [...(e.dataTransfer?.files || [])]; if (fs.length) loadFiles(fs); });
+
+/* settings */
+const dlg = $('#settings');
+$('#settingsBtn').onclick = () => {
+  $('#histCount').textContent = `${hist.length}日分を記録中`;
+  armReset();
+  if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+};
+dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+dlg.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  prefs[seg.dataset.pref] = b.value; store.set(LS_PREF, prefs); applyPrefs();
+  if (data) requestAnimationFrame(drawHistory);
+}));
+function confirmBtn(btn, label, action){
+  btn.onclick = () => {
+    if (btn.dataset.armed){ action(); return; }
+    btn.dataset.armed = '1'; btn.textContent = 'もう一度押すと消去';
+    setTimeout(() => { delete btn.dataset.armed; btn.textContent = label; }, 3000);
+  };
+}
+function armReset(){
+  const h = $('#clearHist'), a = $('#clearAll');
+  delete h.dataset.armed; delete a.dataset.armed; h.textContent = '履歴を消去'; a.textContent = '全データを消去';
+  confirmBtn(h, '履歴を消去', () => { hist = []; store.del(LS_HIST); if (data) addSnapshot(); dlg.close(); render(); toast('推移の記録を消去しました'); });
+  confirmBtn(a, '全データを消去', () => { hist = []; data = null; store.del(LS_HIST); store.del(LS_DATA); dlg.close(); render(); toast('すべてのデータを消去しました'); });
+}
+
+let rT; window.addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(drawHistory, 120); });
+
+/* offline support when hosted with sw.js (ignored where unavailable) */
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+
+/* ---------- sample (SBI portfolio CSV layout; fictional amounts) ---------- */
+const SAMPLE_CSV = `"ポートフォリオ一覧"
+"PF名","ポートフォリオ"
+""
+"総合計"
+"評価額","前日比","損益","損益（％）"
+"13,789,893","+57,476","+3,066,527","+28.60"
+""
+"株式（現物/特定預り）"
+"銘柄（コード）","買付日","数量","取得単価","現在値","前日比","前日比（％）","損益","損益（％）","評価額"
+"7203 トヨタ自動車","----/--/--","300","2,150","2,835","+32","+1.14","+205,500","+31.86","850,500"
+"8306 三菱ＵＦＪフィナンシャル・グループ","----/--/--","500","1,280","2,105","-18","-0.85","+412,500","+64.45","1,052,500"
+"9432 ＮＴＴ","----/--/--","1,000","168","152.3","+0.8","+0.53","-15,700","-9.35","152,300"
+"6758 ソニーグループ","----/--/--","100","3,620","3,410","-45","-1.30","-21,000","-5.80","341,000"
+"株式（現物/特定預り）合計"
+"評価額","2,396,300"
+""
+"株式（現物/NISA預り（成長投資枠））"
+"銘柄（コード）","買付日","数量","取得単価","現在値","前日比","前日比（％）","損益","損益（％）","評価額"
+"8058 三菱商事","----/--/--","200","2,710","3,350","+12","+0.36","+128,000","+23.62","670,000"
+"2914 日本たばこ産業","----/--/--","100","4,050","4,480","-20","-0.44","+43,000","+10.62","448,000"
+"7203 トヨタ自動車","----/--/--","100","2,600","2,835","+32","+1.14","+23,500","+9.04","283,500"
+"株式（現物/NISA預り（成長投資枠））合計"
+"評価額","1,401,500"
+""
+"投資信託（金額/特定預り）"
+"ファンド名","買付日","数量","取得単価","基準価額","前日比","前日比（％）","損益","損益（％）","評価額"
+"ｅＭＡＸＩＳ Ｓｌｉｍ 先進国債券インデックス","----/--/--","500,000","15,200","14,870","-12","-0.08","-16,500","-2.17","743,500"
+"ニッセイ日経平均インデックスファンド","----/--/--","210,000","30,500","37,120","+410","+1.12","+139,020","+21.71","779,520"
+"投資信託（金額/特定預り）合計"
+"評価額","1,523,020"
+""
+"投資信託（金額/NISA預り（つみたて投資枠））"
+"ファンド名","買付日","数量","取得単価","基準価額","前日比","前日比（％）","損益","損益（％）","評価額"
+"eMAXIS Slim 全世界株式(オール・カントリー)","----/--/--","1,452,331","24,105","33,870","+215","+0.64","+1,418,201","+40.51","4,919,045"
+"SBI・V・S&P500インデックス・ファンド","----/--/--","980,400","28,560","36,210","+180","+0.50","+750,006","+26.79","3,550,028"
+"投資信託（金額/NISA預り（つみたて投資枠））合計"
+"評価額","8,469,073"
+`;
+
+applyPrefs();
+render();
+})();
+</script>
+</body>
+</html>
